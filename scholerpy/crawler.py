@@ -1,3 +1,6 @@
+from .storage import Storage
+
+
 class Crawler(object):
     def fetch(self):
         raise NotImplementedError
@@ -9,11 +12,12 @@ class Crawler(object):
         while self:
             response = self.fetch()
             if response.status_code == 200:
+                self.store(response.content, table=self.response_storage,
+                           fmt=None, override=True)
                 self.transform(response.content)
             else:
                 print(response.content)
                 return
 
-    def store(self, content, path):
-        with open(path, 'a') as storage:
-            storage.write(content)
+    def store(self, *args, **kwargs):
+        Storage().dump(*args, **kwargs)

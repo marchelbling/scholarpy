@@ -43,3 +43,7 @@ def parse_xml(content, tag, namespace=None, keep_namespace=False):
     tag = tag if not namespace else '{' + namespace + '}' + tag
     nodes = et.fromstring(content).iter(tag)
     return map(node_to_dict, nodes)
+
+
+def identity(arg):
+    return arg
