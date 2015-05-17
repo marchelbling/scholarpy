@@ -1,4 +1,4 @@
-# scholerpy
+# scholarpy
 
 A scholarly literature crawler. Let’s fetch some free scholar data!
 
