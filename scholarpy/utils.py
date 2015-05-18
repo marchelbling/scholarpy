@@ -46,4 +46,33 @@ def parse_xml(content, tag, namespace=None, keep_namespace=False):
 
 
 def identity(arg):
+    """
+    >>> a = 257
+    >>> identity(a) is a
+    True
+    """
     return arg
+
+
+def true(*args):
+    """
+    >>> true(1)
+    True
+    >>> true(None)
+    True
+    """
+    return True
+
+
+def false(*args):
+    """
+    >>> false(1)
+    False
+    >>> false(None)
+    False
+    """
+    return False
+
+
+def compose(first, second):
+    return lambda *args: second(first(*args))
