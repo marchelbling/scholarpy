@@ -15,7 +15,8 @@ class ArxivMetadataCrawler(Crawler):
                              os.listdir(response_dir)))
         if not xmls:
             return None
-        return _p.splitext(sorted(xmls)[-1])[0].split('_')[-1]
+        return str(max(int(xml.split('.', 1)[0].rsplit('_', 1)[1])
+                       for xml in xmls))
 
     @staticmethod
     def base_url():
