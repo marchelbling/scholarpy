@@ -1,5 +1,5 @@
 import json
-from .utils import identity
+from .utils import identity, compose, true
 
 
 class Storage(object):
@@ -24,14 +24,16 @@ class Storage(object):
     '{"1": "foo"}\n'
 
     >>> object_id = lambda x: operator.__getitem__(x, 'id')
-    >>> storage.dump([{'id': 1, 'x': 'a'}, {'id': 2, 'x':'a'}], tablename,
+    >>> storage.dump([{'id': 1, 'x': 'a'}, {'id': 2, 'x': 'a'}], tablename,
     ...              fmt='json', unique=object_id)
-    >>> storage._uniques(tablename, fmt='json', unique=object_id)
-    set([1, 2])
+    >>> storage.load(tablename, fmt='json')
+    [{u'x': u'a', u'id': 1}, {u'x': u'a', u'id': 2}]
+    >>> storage.load(tablename, fmt='json', func=object_id)
+    [1, 2]
 
     >>> storage.dump([{'id': 1, 'x': 'b'}, {'id': 3, 'x': 'b'}], tablename,
     ...              fmt='json', unique=object_id)
-    >>> map(lambda x: (x['id'], x['x']), storage.load(tablename, fmt='json'))
+    >>> storage.load(tablename, fmt='json', func=lambda x: (x['id'], x['x']))
     [(1, u'a'), (2, u'a'), (3, u'b')]
     """
     def _serializer(self, fmt):
@@ -51,10 +53,13 @@ class Storage(object):
         deserializer = self._deserializer(fmt)
         return lambda x: deserializer(serializer(x))
 
-    def load(self, table, fmt):
+    def load(self, table, fmt, func=None):
+        deserializer = self._deserializer(fmt)
+        functor = compose(deserializer, func or identity)
+
         try:
             with open(table, 'r') as storage:
-                return map(self._deserializer(fmt), storage.readlines())
+                return map(functor, storage.readlines())
         except (IOError, ValueError):
             # if file is
             # * not existing
@@ -62,17 +67,13 @@ class Storage(object):
             # return no data
             return []
 
-    def _uniques(self, table, fmt, unique):
-        data = self.load(table, fmt)
-        return set(map(unique, data))
-
     def _filter(self, table, fmt, unique):
         if unique:
-            uniques = self._uniques(table, fmt, unique) if unique else set()
-            formatter = self._to_fmt(fmt)
-            return lambda x: unique(formatter(x)) not in uniques
+            uniques = set(self.load(table, fmt, func=unique) if unique else [])
+            return compose(compose(self._to_fmt(fmt), unique),
+                           lambda x: x not in uniques)
         else:
-            return lambda x: True
+            return true
 
     def _format(self, content):
         if not isinstance(content, basestring):
