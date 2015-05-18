@@ -82,5 +82,6 @@ class ArxivMetadataCrawler(Crawler):
                          namespace='http://www.openarchives.org/OAI/2.0/',
                          keep_namespace=False)
         self.store(data, table=self.transform_storage, fmt='json',
-                   override=False, unique=lambda x: x['id'])
+                   override=False,
+                   unique=lambda x: x.get('id', x['identifier']))
         self.update(content)
