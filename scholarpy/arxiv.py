@@ -1,7 +1,10 @@
 import os
 import requests
+import datetime
 from .crawler import Crawler
 from .utils import wait, parse_xml
+
+_p = os.path
 
 
 class ArxivMetadataCrawler(Crawler):
@@ -9,7 +12,6 @@ class ArxivMetadataCrawler(Crawler):
 
     @staticmethod
     def get_last_cursor(response_dir):
-        _p = os.path
         xmls = filter(lambda x: _p.splitext(x)[-1] == '.xml',
                       filter(lambda x: _p.isfile(_p.join(response_dir, x)),
                              os.listdir(response_dir)))
@@ -22,15 +24,30 @@ class ArxivMetadataCrawler(Crawler):
     def base_url():
         return 'http://export.arxiv.org/oai2?verb=ListRecords'
 
-    def __init__(self, data_dir=None):
-        self.data_dir = os.path.join(data_dir, 'arxiv')
-        self.response_dir = os.path.join(self.data_dir, 'xml')
+    def __init__(self, data_dir=None, from_date=None, to_date=None):
+        default_cursor = '0001'
+        self.data_dir = _p.join(data_dir, 'arxiv')
+        self.response_dir = _p.join(self.data_dir, 'xml')
+
+        if from_date or to_date:
+            if not from_date:
+                folders = filter(lambda x: _p.isdir(_p.join(self.response_dir, x)),
+                                 os.listdir(self.response_dir))
+                from_date = max(folder.split('_', 1)[-1] for folder in folders) or '1991-01-01'
+            if not to_date:
+                to_date = datetime.datetime.now().strftime('%Y-%m-%d')
+            # do not override some responses xml, use dedicated folder
+            self.response_dir = os.path.join(self.response_dir, '{}_{}'.format(from_date, to_date))
+            self.cursor = default_cursor
+        else:
+            # attempt to find the next cursor retrieved
+            self.cursor = ArxivMetadataCrawler.get_last_cursor(self.response_dir) or default_cursor
+
         if not os.path.isdir(self.response_dir):
             os.makedirs(self.response_dir)
 
-        self.cursor = ArxivMetadataCrawler.get_last_cursor(self.response_dir) \
-            or '0001'
-
+        self.from_date = from_date
+        self.to_date = to_date
         self.token = None
         self.clock = None
 
@@ -41,6 +58,10 @@ class ArxivMetadataCrawler(Crawler):
     def url(self):
         if self.token is None:
             suffix = '&metadataPrefix=arXivRaw'
+            if self.from_date:
+                suffix += '&from={}'.format(self.from_date)
+            if self.to_date:
+                suffix += '&until={}'.format(self.to_date)
         else:
             suffix = '&resumptionToken=' + self.resumption_token
 
